@@ -1,0 +1,59 @@
+services:
+  # Turnos Service - Conectado a base de datos manual existente
+  - type: web
+    name: turnos-service
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./turnos-service/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: R2DBC_URL
+        value: r2dbc:postgresql://cafeuser:ibeysBNW7eRrhMhL8fnUfEoVPxUPlyVS@dpg-d4opn5ngi27c738m9b8g-a.oregon-postgres.render.com/cafedb_sujp
+      - key: DB_USER
+        value: cafeuser
+      - key: DB_PASSWORD
+        value: ibeysBNW7eRrhMhL8fnUfEoVPxUPlyVS
+
+  # Empleados Service - Conectado a base de datos manual existente
+  - type: web
+    name: empleados-service
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./empleados-service/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: R2DBC_URL
+        value: r2dbc:postgresql://cafeuser:ibeysBNW7eRrhMhL8fnUfEoVPxUPlyVS@dpg-d4opn5ngi27c738m9b8g-a.oregon-postgres.render.com/cafedb_sujp
+      - key: DB_USER
+        value: cafeuser
+      - key: DB_PASSWORD
+        value: ibeysBNW7eRrhMhL8fnUfEoVPxUPlyVS
+
+  # API Gateway
+  - type: web
+    name: api-gateway
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./api-gateway/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: TURNOS_URI
+        fromService:
+          name: turnos-service
+          type: web
+          property: host
+      - key: EMPLEADOS_URI
+        fromService:
+          name: empleados-service
+          type: web
+          property: host
+

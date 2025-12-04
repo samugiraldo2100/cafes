@@ -1,0 +1,64 @@
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 10000  # 10s
+        response-timeout: 60s   # 60s
+      default-filters:
+        - name: Retry
+          args:
+            retries: 2
+            methods: GET
+            statuses: BAD_GATEWAY, GATEWAY_TIMEOUT, SERVICE_UNAVAILABLE, INTERNAL_SERVER_ERROR
+      routes:
+        # Turnos: acepta /api/turnos/** (passthrough)
+        - id: turnos-service-api
+          uri: ${TURNOS_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/turnos/**
+        # Turnos: acepta /turnos/** y reescribe a /api/turnos/**
+        - id: turnos-service-noapi
+          uri: ${TURNOS_URI:http://localhost:8081}
+          predicates:
+            - Path=/turnos/**
+          filters:
+            - RewritePath=/turnos/(?<segment>.*), /api/turnos/${segment}
+        # Turnos: acepta /turnos exacto y lo envía a /api/turnos
+        - id: turnos-service-root
+          uri: ${TURNOS_URI:http://localhost:8081}
+          predicates:
+            - Path=/turnos
+          filters:
+            - SetPath=/api/turnos
+        # Empleados: acepta /api/empleados/** (passthrough)
+        - id: empleados-service-api
+          uri: ${EMPLEADOS_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/empleados/**
+        # Empleados: acepta /empleados/** y reescribe a /api/empleados/**
+        - id: empleados-service-noapi
+          uri: ${EMPLEADOS_URI:http://localhost:8082}
+          predicates:
+            - Path=/empleados/**
+          filters:
+            - RewritePath=/empleados/(?<segment>.*), /api/empleados/${segment}
+        # Empleados: acepta /empleados exacto y lo envía a /api/empleados
+        - id: empleados-service-root
+          uri: ${EMPLEADOS_URI:http://localhost:8082}
+          predicates:
+            - Path=/empleados
+          filters:
+            - SetPath=/api/empleados
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+

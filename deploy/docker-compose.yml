@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: cafedb
+      POSTGRES_USER: cafeuser
+      POSTGRES_PASSWORD: cafepass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U cafeuser -d cafedb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  empleados-service:
+    build: ../empleados-service
+    environment:
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/cafedb
+      SPRING_R2DBC_USERNAME: cafeuser
+      SPRING_R2DBC_PASSWORD: cafepass
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:8082/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  turnos-service:
+    build: ../turnos-service
+    environment:
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/cafedb
+      SPRING_R2DBC_USERNAME: cafeuser
+      SPRING_R2DBC_PASSWORD: cafepass
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:8081/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api-gateway:
+    build: ../api-gateway
+    environment:
+      EMPLEADOS_URI: http://empleados-service:8082
+      TURNOS_URI: http://turnos-service:8081
+    depends_on:
+      empleados-service:
+        condition: service_healthy
+      turnos-service:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
